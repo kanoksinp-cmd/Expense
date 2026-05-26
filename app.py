@@ -1,9 +1,31 @@
 from flask import Flask, request, jsonify, send_from_directory
-import sqlite3, os, datetime
+from flask_sock import Sock
+import sqlite3
+import os
+import datetime
+import json
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
+# เปิดใช้งาน WebSocket extension บน Flask
+sock = Sock(app)
 
 DB_FILE = os.environ.get('DB_PATH', 'trip_database.db')
+
+# ─── WEBSOCKET CLIENTS MANAGEMENT ───────────────────────────
+# เก็บเซสชันการเชื่อมต่อ: { trip_id: { username: ws_connection } }
+connected_clients = {}
+
+def broadcast_to_trip(trip_id, action_type, payload=None):
+    """ฟังก์ชันส่งสัญญาณกระจายข่าวให้ทุกคนในทริปอัปเดตข้อมูลพร้อมกันแบบ Real-time"""
+    if trip_id in connected_clients:
+        message = json.dumps({"type": action_type, **(payload or {})})
+        # ค้นหาคนที่มีการเชื่อมต่อค้างไว้ในทริปนั้น ๆ แล้วส่งข้อมูลไปทันที
+        for user, client in list(connected_clients[trip_id].items()):
+            try:
+                client.send(message)
+            except Exception:
+                # หากการเชื่อมต่อหลุด ให้ลบออกจากระบบ
+                connected_clients[trip_id].pop(user, None)
 
 # ─── DB INIT ────────────────────────────────────────────────
 def get_conn():
@@ -35,7 +57,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             trip_id INTEGER, description TEXT, amount REAL,
-            payer_name TEXT, split_members TEXT, image_blob TEXT,
+            text_desc TEXT, payer_name TEXT, split_members TEXT, image_blob TEXT,
             FOREIGN KEY(trip_id) REFERENCES trips(id)
         );
         CREATE TABLE IF NOT EXISTS notifications (
@@ -56,6 +78,50 @@ init_db()
 
 def now_local():
     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+# ─── WEBSOCKET ROUTE (REAL-TIME HUB) ───────────────────────
+@sock.route('/ws/trip/<int:trip_id>')
+def trip_websocket(ws, trip_id):
+    """ท่อรับส่งข้อมูล Real-time ดักฟังและจัดการสถานะการเชื่อมต่อ"""
+    username = request.args.get('user')
+    if not username:
+        return
+
+    if trip_id not in connected_clients:
+        connected_clients[trip_id] = {}
+    
+    # ลงทะเบียนผู้ใช้เข้าสู่ท่อส่งข้อมูลประจำทริป
+    connected_clients[trip_id][username] = ws
+    
+    # อัปเดตสถานะออนไลน์และกระจายให้ทุกคนเห็นทันที
+    conn = get_conn()
+    conn.execute('''INSERT INTO online_status(name, last_seen) VALUES(?,?)
+                    ON CONFLICT(name) DO UPDATE SET last_seen=?''',
+                 (username, now_local(), now_local()))
+    conn.commit()
+    conn.close()
+    
+    # แจ้งทุกคนในกลุ่มว่ามีคนเข้าทริปออนไลน์เพิ่ม
+    broadcast_to_trip(trip_id, "ONLINE_UPDATE")
+
+    try:
+        while True:
+            # เปิดท่อรอรับฟังข้อมูล (ในระบบเราเน้นใช้การ trigger จากฝั่ง HTTP API เป็นหลัก)
+            data = ws.receive()
+            if data:
+                msg = json.loads(data)
+                if msg.get('type') == 'HEARTBEAT':
+                    conn = get_conn()
+                    conn.execute('UPDATE online_status SET last_seen=? WHERE name=?', (now_local(), username))
+                    conn.commit()
+                    conn.close()
+    except Exception:
+        pass
+    finally:
+        # ตัดการเชื่อมต่อเมื่อปิดแท็บหน้าจอ
+        if trip_id in connected_clients and username in connected_clients[trip_id]:
+            connected_clients[trip_id].pop(username, None)
+        broadcast_to_trip(trip_id, "ONLINE_UPDATE")
 
 # ─── SERVE FRONTEND ─────────────────────────────────────────
 @app.route('/')
@@ -181,6 +247,9 @@ def add_member(trip_id):
     conn.execute('INSERT INTO members(trip_id, name) VALUES(?,?)', (trip_id, name))
     conn.commit()
     conn.close()
+    
+    # REAL-TIME ALARM: แจ้งเตือนสมาชิกรีเฟรชรายชื่อกลุ่มทันที
+    broadcast_to_trip(trip_id, "MEMBER_UPDATE")
     return jsonify({'ok': True}), 201
 
 @app.route('/api/trips/<int:trip_id>/members/<name>', methods=['DELETE'])
@@ -189,6 +258,9 @@ def remove_member(trip_id, name):
     conn.execute('DELETE FROM members WHERE trip_id=? AND name=?', (trip_id, name))
     conn.commit()
     conn.close()
+    
+    # REAL-TIME ALARM: แจ้งเตือนสมาชิกอัปเดตกลุ่มทันทีเมื่อมีคนออก
+    broadcast_to_trip(trip_id, "MEMBER_UPDATE")
     return jsonify({'ok': True})
 
 # ─── EXPENSES ────────────────────────────────────────────────
@@ -227,6 +299,10 @@ def add_expense(trip_id):
             )
     conn.commit()
     conn.close()
+    
+    # REAL-TIME ALARM: ทุกหน้าจออัปเดตรายการบิลและสัดส่วนเงินทันทีโดยไม่ต้องรอโหลดซ้ำ
+    broadcast_to_trip(trip_id, "EXPENSE_UPDATE")
+    broadcast_to_trip(trip_id, "CHAT_UPDATE")
     return jsonify({'id': exp_id}), 201
 
 @app.route('/api/expenses/<int:exp_id>', methods=['PUT'])
@@ -234,20 +310,34 @@ def update_expense(exp_id):
     data = request.json
     split = data.get('split_members', [])
     conn = get_conn()
+    
+    # ดึงข้อมูล trip_id ของบิลนี้ออกมาก่อนอัปเดตเพื่อใช้ทำ broadcast
+    orig = conn.execute('SELECT trip_id FROM expenses WHERE id=?', (exp_id,)).fetchone()
+    trip_id = orig['trip_id'] if orig else None
+    
     conn.execute(
         'UPDATE expenses SET description=?,amount=?,payer_name=?,split_members=?,image_blob=? WHERE id=?',
         (data['description'], data['amount'], data['payer_name'], ','.join(split), data.get('image_blob'), exp_id)
     )
     conn.commit()
     conn.close()
+    
+    if trip_id:
+        broadcast_to_trip(trip_id, "EXPENSE_UPDATE")
     return jsonify({'ok': True})
 
 @app.route('/api/expenses/<int:exp_id>', methods=['DELETE'])
 def delete_expense(exp_id):
     conn = get_conn()
+    orig = conn.execute('SELECT trip_id FROM expenses WHERE id=?', (exp_id,)).fetchone()
+    trip_id = orig['trip_id'] if orig else None
+    
     conn.execute('DELETE FROM expenses WHERE id=?', (exp_id,))
     conn.commit()
     conn.close()
+    
+    if trip_id:
+        broadcast_to_trip(trip_id, "EXPENSE_UPDATE")
     return jsonify({'ok': True})
 
 # ─── NOTIFICATIONS ───────────────────────────────────────────
@@ -266,13 +356,17 @@ def get_notifications(trip_id, username):
 @app.route('/api/notifications/send', methods=['POST'])
 def send_notification():
     data = request.json
+    trip_id = data['trip_id']
     conn = get_conn()
     conn.execute(
         'INSERT INTO notifications(trip_id,to_user,from_user,message,is_auto,is_read,timestamp) VALUES(?,?,?,?,0,0,?)',
-        (data['trip_id'], data['to_user'], data['from_user'], data['message'], now_local())
+        (trip_id, data['to_user'], data['from_user'], data['message'], now_local())
     )
     conn.commit()
     conn.close()
+    
+    # REAL-TIME ALARM: ดันกล่องแชทของเพื่อนร่วมทริปให้เด้งทันทีที่มีข้อความส่งถึง
+    broadcast_to_trip(trip_id, "CHAT_UPDATE")
     return jsonify({'ok': True}), 201
 
 @app.route('/api/notifications/read', methods=['POST'])
@@ -294,14 +388,22 @@ def mark_read():
         )
     conn.commit()
     conn.close()
+    
+    broadcast_to_trip(trip_id, "CHAT_UPDATE")
     return jsonify({'ok': True})
 
 @app.route('/api/notifications/<int:notif_id>', methods=['DELETE'])
 def delete_notification(notif_id):
     conn = get_conn()
+    orig = conn.execute('SELECT trip_id FROM notifications WHERE id=?', (notif_id,)).fetchone()
+    trip_id = orig['trip_id'] if orig else None
+    
     conn.execute('DELETE FROM notifications WHERE id=?', (notif_id,))
     conn.commit()
     conn.close()
+    
+    if trip_id:
+        broadcast_to_trip(trip_id, "CHAT_UPDATE")
     return jsonify({'ok': True})
 
 # ─── RUN ─────────────────────────────────────────────────────
