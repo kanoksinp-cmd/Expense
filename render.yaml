@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: trip-expense-splitter
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2
+    envVars:
+      - key: DB_PATH
+        value: /opt/render/project/src/trip_database.db
+    disk:
+      name: db-storage
+      mountPath: /opt/render/project/src
+      sizeGB: 1
