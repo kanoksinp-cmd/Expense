@@ -80,9 +80,9 @@ def now_local():
     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 # ─── WEBSOCKET ROUTE (REAL-TIME HUB) ───────────────────────
-@sock.route('/ws/trip/<int:trip_id>')
+@sock.connection('/ws/trip/<int:trip_id>')
 def trip_websocket(ws, trip_id):
-    """ท่อรับส่งข้อมูล Real-time ดักฟังและจัดการสถานะการเชื่อมต่อ"""
+    """ท่อรับส่งข้อมูล Real-time แก้ไขเป็น @sock.connection ตามเวอร์ชันล่าสุดแล้ว"""
     username = request.args.get('user')
     if not username:
         return
@@ -106,7 +106,7 @@ def trip_websocket(ws, trip_id):
 
     try:
         while True:
-            # เปิดท่อรอรับฟังข้อมูล (ในระบบเราเน้นใช้การ trigger จากฝั่ง HTTP API เป็นหลัก)
+            # เปิดท่อรอรับฟังข้อมูล
             data = ws.receive()
             if data:
                 msg = json.loads(data)
@@ -248,7 +248,6 @@ def add_member(trip_id):
     conn.commit()
     conn.close()
     
-    # REAL-TIME ALARM: แจ้งเตือนสมาชิกรีเฟรชรายชื่อกลุ่มทันที
     broadcast_to_trip(trip_id, "MEMBER_UPDATE")
     return jsonify({'ok': True}), 201
 
@@ -259,7 +258,6 @@ def remove_member(trip_id, name):
     conn.commit()
     conn.close()
     
-    # REAL-TIME ALARM: แจ้งเตือนสมาชิกอัปเดตกลุ่มทันทีเมื่อมีคนออก
     broadcast_to_trip(trip_id, "MEMBER_UPDATE")
     return jsonify({'ok': True})
 
@@ -300,7 +298,6 @@ def add_expense(trip_id):
     conn.commit()
     conn.close()
     
-    # REAL-TIME ALARM: ทุกหน้าจออัปเดตรายการบิลและสัดส่วนเงินทันทีโดยไม่ต้องรอโหลดซ้ำ
     broadcast_to_trip(trip_id, "EXPENSE_UPDATE")
     broadcast_to_trip(trip_id, "CHAT_UPDATE")
     return jsonify({'id': exp_id}), 201
@@ -311,7 +308,6 @@ def update_expense(exp_id):
     split = data.get('split_members', [])
     conn = get_conn()
     
-    # ดึงข้อมูล trip_id ของบิลนี้ออกมาก่อนอัปเดตเพื่อใช้ทำ broadcast
     orig = conn.execute('SELECT trip_id FROM expenses WHERE id=?', (exp_id,)).fetchone()
     trip_id = orig['trip_id'] if orig else None
     
@@ -365,7 +361,6 @@ def send_notification():
     conn.commit()
     conn.close()
     
-    # REAL-TIME ALARM: ดันกล่องแชทของเพื่อนร่วมทริปให้เด้งทันทีที่มีข้อความส่งถึง
     broadcast_to_trip(trip_id, "CHAT_UPDATE")
     return jsonify({'ok': True}), 201
 
