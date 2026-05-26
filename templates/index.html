@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trip Expense Splitter Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#6366F1;--primary-dark:#4F46E5;--primary-light:#A5B4FC;
+  --secondary:#EC4899;--secondary-dark:#DB2777;--secondary-light:#F9A8D4;
+  --success:#10B981;--success-light:#D1FAE5;
+  --danger:#EF4444;--danger-light:#FEE2E2;
+  --warning:#F59E0B;--warning-light:#FEF3C7;
+  --info:#06B6D4;--info-light:#CFFAFE;
+  --bg-start:#F0F4FF;--bg-end:#E0E7FF;
+  --surface:#FFFFFF;--surface-glass:rgba(255,255,255,0.85);
+  --border:rgba(99,102,241,0.1);
+  --text:#1E293B;--text2:#64748B;--text3:#94A3B8;
+  --shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -1px rgba(0,0,0,0.06);
+  --shadow-lg:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);
+  --sidebar-w:320px;--radius:12px;--radius-lg:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Thai',sans-serif;background:linear-gradient(135deg,var(--bg-start) 0%,var(--bg-end) 100%);color:var(--text);font-size:15px;line-height:1.6;display:flex;min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:'';position:fixed;top:0;right:0;width:600px;height:600px;background:radial-gradient(circle,rgba(236,72,153,0.1) 0%,transparent 70%);border-radius:50%;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;bottom:-200px;left:-200px;width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,0.1) 0%,transparent 70%);border-radius:50%;pointer-events:none;z-index:0}
+
+#sidebar{width:var(--sidebar-w);background:var(--surface-glass);backdrop-filter:blur(20px);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);box-shadow:var(--shadow-lg)}
+#sidebar.hidden{transform:translateX(-100%)}
+.sidebar-logo{padding:24px 20px;background:linear-gradient(135deg,var(--primary) 0%,var(--secondary) 100%);font-family:'Poppins',sans-serif;font-size:18px;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.2);text-shadow:0 2px 4px rgba(0,0,0,0.1)}
+.sidebar-section{padding:18px 16px;border-bottom:1px solid var(--border)}
+.sidebar-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+#sidebar-toggle{position:fixed;top:20px;left:20px;z-index:200;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 16px rgba(99,102,241,0.3);transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+#sidebar-toggle:hover{transform:scale(1.1) rotate(90deg);box-shadow:0 12px 24px rgba(99,102,241,0.4)}
+#sidebar-toggle.shifted{left:calc(var(--sidebar-w) + 20px)}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);z-index:99;opacity:0;transition:opacity 0.3s}
+#sidebar-overlay.visible{display:block;opacity:1}
+
+#main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh;transition:margin-left 0.3s cubic-bezier(0.4,0,0.2,1);position:relative;z-index:1}
+#main.expanded{margin-left:0}
+#main-header{background:var(--surface-glass);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:20px 32px 20px 72px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
+#main-content{padding:28px 32px;flex:1}
+
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:var(--radius);font-family:'IBM Plex Sans Thai',sans-serif;font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,0.1);transform:translateY(-1px)}
+label{font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:6px}
+.form-group{margin-bottom:16px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:var(--radius);font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s cubic-bezier(0.4,0,0.2,1);white-space:nowrap;position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.2),transparent);opacity:0;transition:opacity 0.2s}
+.btn:hover::before{opacity:1}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 4px 12px rgba(99,102,241,0.3)}
+.btn-primary:hover{box-shadow:0 6px 16px rgba(99,102,241,0.4);transform:translateY(-2px)}
+.btn-success{background:linear-gradient(135deg,var(--success),#059669);color:#fff;box-shadow:0 4px 12px rgba(16,185,129,0.3)}
+.btn-danger{background:linear-gradient(135deg,var(--danger),#DC2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,0.3)}
+.btn-ghost{background:var(--surface);color:var(--text2);border:2px solid var(--border);box-shadow:var(--shadow)}
+.btn-ghost:hover{background:var(--surface);border-color:var(--primary);color:var(--primary);transform:translateY(-2px)}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-block{width:100%}
+
+.tabs{display:flex;gap:8px;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:12px 20px;cursor:pointer;font-size:14px;font-weight:600;font-family:'Poppins',sans-serif;color:var(--text2);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.2s;white-space:nowrap;position:relative}
+.tab::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--secondary));transform:scaleX(0);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1)}
+.tab.active{color:var(--primary)}
+.tab.active::after{transform:scaleX(1)}
+.tab:hover{color:var(--primary);transform:translateY(-2px)}
+.tab-content{display:none;animation:fadeIn 0.3s}
+.tab-content.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:16px;box-shadow:var(--shadow);transition:all 0.3s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--primary),var(--secondary));opacity:0;transition:opacity 0.3s}
+.card:hover{box-shadow:var(--shadow-lg);transform:translateY(-4px)}
+.card:hover::before{opacity:1}
+
+.alert{padding:12px 16px;border-radius:var(--radius);font-size:14px;margin-bottom:12px;border-left:4px solid;font-weight:500}
+.alert-success{background:var(--success-light);color:#065F46;border-color:var(--success)}
+.alert-danger{background:var(--danger-light);color:#991B1B;border-color:var(--danger)}
+.alert-warning{background:var(--warning-light);color:#92400E;border-color:var(--warning)}
+.alert-info{background:var(--info-light);color:#0E7490;border-color:var(--info)}
+
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.05em}
+.badge-green{background:linear-gradient(135deg,var(--success),#059669);color:#fff}
+.badge-red{background:linear-gradient(135deg,var(--danger),#DC2626);color:#fff;animation:pulse 2s infinite}
+.badge-blue{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
+.badge-orange{background:linear-gradient(135deg,var(--warning),#D97706);color:#fff}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+
+.dot-green{width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block;box-shadow:0 0 8px var(--success);animation:glow 2s infinite}
+.dot-gray{width:10px;height:10px;border-radius:50%;background:var(--text3);display:inline-block}
+@keyframes glow{0%,100%{box-shadow:0 0 8px var(--success)}50%{box-shadow:0 0 16px var(--success)}}
+
+.member-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:14px}
+.chat-wrap{max-height:280px;overflow-y:auto;padding:8px 0}
+.chat-msg{margin-bottom:12px;animation:slideIn 0.3s}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.bubble{display:inline-block;padding:10px 14px;border-radius:16px;font-size:13px;max-width:85%;word-break:break-word;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.bubble-me{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-radius:16px 16px 4px 16px}
+.bubble-them{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:16px 16px 16px 4px}
+.bubble-sys{background:linear-gradient(135deg,var(--info-light),#A5F3FC);color:var(--info);border-radius:16px;border-left:4px solid var(--info);font-size:12px;font-weight:500}
+.chat-time{font-size:10px;color:var(--text3);margin-top:4px}
+
+.check-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:8px}
+.check-item{display:flex;align-items:center;gap:8px;background:var(--surface);padding:8px 12px;border-radius:var(--radius);font-size:13px;cursor:pointer;border:2px solid var(--border);transition:all 0.2s}
+.check-item:hover{border-color:var(--primary);background:var(--primary-light);background:linear-gradient(135deg,rgba(99,102,241,0.05),rgba(236,72,153,0.05))}
+.check-item input{width:auto;accent-color:var(--primary)}
+
+.expense-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;padding:4px;border-radius:var(--radius);transition:background 0.2s}
+.expense-header:hover{background:rgba(99,102,241,0.05)}
+.expense-body{display:none;margin-top:16px;padding-top:16px;border-top:2px solid var(--border)}
+.expense-body.open{display:block;animation:fadeIn 0.3s}
+
+.tx-row{background:linear-gradient(135deg,rgba(99,102,241,0.05),rgba(236,72,153,0.05));border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:12px;border-left:4px solid var(--primary);box-shadow:var(--shadow);transition:all 0.3s}
+.tx-row:hover{transform:translateX(4px);box-shadow:var(--shadow-lg)}
+
+.code-box{background:linear-gradient(135deg,#F8FAFC,#F1F5F9);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-family:'Courier New',monospace;border:2px solid var(--border);word-break:break-all;font-weight:600;color:var(--primary)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+hr.divider{border:none;border-top:2px solid var(--border);margin:20px 0;opacity:0.5}
+
+.chat-tab-btn{padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:2px solid var(--border);background:var(--surface);color:var(--text2);font-family:'Poppins',sans-serif;font-weight:600;transition:all 0.2s}
+.chat-tab-btn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.chat-tab-btn.active{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(99,102,241,0.3)}
+.chat-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+
+.tag-unread{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--danger),#DC2626);color:#fff;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:700;box-shadow:0 2px 8px rgba(239,68,68,0.4);animation:bounce 0.5s}
+@keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+
+img.slip-img{max-width:100%;border-radius:var(--radius);margin-top:10px;box-shadow:var(--shadow-lg);transition:transform 0.3s}
+img.slip-img:hover{transform:scale(1.02)}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s}
+.modal-overlay.open{display:flex;opacity:1}
+.modal-box{background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:420px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1)}
+.modal-overlay.open .modal-box{transform:scale(1)}
+
+#toast{position:fixed;bottom:28px;right:28px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;padding:14px 20px;border-radius:var(--radius-lg);font-size:14px;z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s cubic-bezier(0.4,0,0.2,1);pointer-events:none;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);font-weight:500}
+#toast.show{opacity:1;transform:translateY(0)}
+
+#sync-indicator{position:fixed;top:20px;right:20px;background:linear-gradient(135deg,var(--info),#0891B2);color:#fff;padding:8px 16px;border-radius:30px;font-size:12px;z-index:9999;display:none;align-items:center;gap:8px;box-shadow:0 8px 16px rgba(6,182,212,0.3);font-weight:600}
+#sync-indicator.syncing{display:flex}
+#sync-indicator::before{content:'';width:10px;height:10px;border-radius:50%;background:#fff;animation:pulse-dot 1.5s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1.3)}}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:linear-gradient(135deg,var(--primary-light),var(--secondary-light));border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(135deg,var(--primary),var(--secondary))}
+
+@media (max-width:768px){
+  #sidebar{transform:translateX(-100%)}
+  #sidebar.visible{transform:translateX(0)}
+  #main{margin-left:0}
+  #sidebar-toggle{left:16px;width:44px;height:44px}
+  #sidebar-toggle.shifted{left:16px}
+  #main-header{padding-left:68px;padding-right:16px}
+  #main-content{padding:20px 16px}
+  .grid2{grid-template-columns:1fr}
+  .card{padding:18px}
+  .modal-box{width:90vw;padding:24px}
+}
+
+h3{font-family:'Poppins',sans-serif;font-weight:700;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+</style>
+</head>
+<body>
+
+<button id="sidebar-toggle" class="shifted" onclick="toggleSidebar()" aria-label="เปิด/ปิดเมนู">
+  <span id="toggle-icon">☰</span>
+</button>
+
+<div id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
+
+<div id="sidebar">
+  <div class="sidebar-logo">✈️ Trip Splitter Pro</div>
+  <div class="sidebar-section" id="user-section"></div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">🌐 กำลังออนไลน์</div>
+    <div id="online-list" style="font-size:13px;"></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">➕ สร้าง Event ใหม่</div>
+    <div class="form-group"><label>ชื่อ Event</label><input type="text" id="new-trip-name" placeholder="เช่น เที่ยวเชียงใหม่"></div>
+    <div class="form-group"><label>วันที่จัด</label><input type="date" id="new-trip-date"></div>
+    <button class="btn btn-primary btn-block btn-sm" onclick="createTrip()">สร้าง Event</button>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">🗺️ เลือก Event</div>
+    <select id="trip-selector" onchange="selectTrip(this.value)" style="margin-bottom:8px;"></select>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="openEditTrip()" style="flex:1;">✏️ แก้ไข</button>
+      <button class="btn btn-ghost btn-sm" onclick="deleteTrip()" style="flex:1;">🗑️ ลบ</button>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">👥 สมาชิกใน Event</div>
+    <div id="member-list" style="margin-bottom:10px;"></div>
+    <select id="member-add-select" style="margin-bottom:8px;"></select>
+    <button class="btn btn-primary btn-block btn-sm" onclick="addMemberToTrip()">ดึงเข้ากลุ่ม</button>
+  </div>
+  <div class="sidebar-section" style="flex:1;">
+    <div class="sidebar-section-title" id="chat-section-title">🔔 ศูนย์แชทส่วนตัว</div>
+    <div id="chat-panel"></div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="main-header">
+    <div id="main-title" style="font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></div>
+    <div id="main-subtitle" style="font-size:14px;color:var(--text2);margin-top:4px;font-weight:500;"></div>
+  </div>
+  <div id="main-content">
+    <div id="no-login-msg" class="alert alert-warning" style="display:none;">กรุณาเลือกโปรไฟล์ผู้ใช้ที่แถบซ้ายก่อน</div>
+    <div id="no-trip-msg" class="alert alert-info" style="display:none;">กรุณาสร้าง Event ใหม่ที่แถบซ้ายมือก่อน</div>
+    <div id="no-member-msg" class="alert alert-warning" style="display:none;">ยังไม่มีสมาชิกในกลุ่มนี้ ชวนเพื่อนเข้ากลุ่มที่แถบซ้ายก่อน</div>
+    <div id="app-content" style="display:none;">
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('tab-add')">📝 สร้างบิลใหม่</div>
+        <div class="tab" onclick="showTab('tab-history')">📊 ประวัติบิล</div>
+        <div class="tab" onclick="showTab('tab-settle')">💰 สรุปเคลียร์เงิน</div>
+      </div>
+      <div id="tab-add" class="tab-content active">
+        <div class="card">
+          <h3 style="margin-bottom:20px;font-size:18px;">➕ เพิ่มบิลค่าใช้จ่าย</h3>
+          <div class="form-group"><label>รายการ</label><input type="text" id="bill-desc" placeholder="เช่น ค่าที่พัก, อาหารเย็น"></div>
+          <div class="form-group"><label>จำนวนเงิน (บาท)</label><input type="number" id="bill-amt" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="form-group"><label>คนสำรองจ่ายเงินก่อน</label><select id="bill-payer"></select></div>
+          <div class="form-group"><label>คนร่วมหารในบิลนี้</label><div class="check-group" id="bill-split-checkboxes"></div></div>
+          <div class="form-group"><label>แนบรูปสลิป (ไม่บังคับ)</label><input type="file" id="bill-slip" accept="image/*" style="width:100%;font-size:13px;"></div>
+          <button class="btn btn-primary btn-block" onclick="saveBill()">💾 บันทึกบิล</button>
+        </div>
+      </div>
+      <div id="tab-history" class="tab-content"><div id="expense-list"></div></div>
+      <div id="tab-settle" class="tab-content">
+        <h3 style="margin-bottom:20px;font-size:18px;">🤝 สรุปยอดแผนการกระจายเงิน</h3>
+        <div class="grid2" id="balance-cards"></div>
+        <hr class="divider">
+        <h4 style="margin-bottom:16px;font-size:16px;font-weight:600;">🚀 แผนการโอนเงินคืน</h4>
+        <div id="transfer-plan"></div>
+        <hr class="divider">
+        <h4 style="margin-bottom:10px;font-size:16px;font-weight:600;">📲 ส่งสรุปยอดเข้า LINE</h4>
+        <textarea id="line-msg-box" rows="6" readonly style="font-size:13px;background:var(--surface);margin-bottom:10px;"></textarea>
+        <button class="btn btn-success btn-block" onclick="shareToLine()">🟢 แชร์สรุปยอดเข้าแอป LINE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay open" id="login-modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:20px;font-size:20px;text-align:center;">🔐 เลือกหรือสร้างโปรไฟล์</h3>
+    <div style="display:flex;gap:10px;margin-bottom:18px;">
+      <button class="btn btn-primary btn-sm" id="login-tab-btn" onclick="switchLoginTab('login')" style="flex:1;">เข้าสู่ระบบ</button>
+      <button class="btn btn-ghost btn-sm" id="register-tab-btn" onclick="switchLoginTab('register')" style="flex:1;">สร้างใหม่</button>
+    </div>
+    <div id="login-tab">
+      <div class="form-group"><label>เลือกชื่อของคุณ</label><select id="login-user-select"></select></div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">เข้าสู่ระบบ</button>
+    </div>
+    <div id="register-tab" style="display:none;">
+      <div class="form-group"><label>ชื่อเล่น / ชื่อของคุณ</label><input type="text" id="reg-name" placeholder="กรอกชื่อของคุณ"></div>
+      <button class="btn btn-primary btn-block" onclick="doRegister()">สร้างและเข้าสู่ระบบ</button>
+    </div>
+    <div id="login-error" class="alert alert-danger" style="display:none;margin-top:12px;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="edit-trip-modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:20px;font-size:18px;">✏️ แก้ไข Event</h3>
+    <div class="form-group"><label>ชื่อ Event</label><input type="text" id="edit-trip-name"></div>
+    <div class="form-group"><label>วันที่จัด</label><input type="date" id="edit-trip-date"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveEditTrip()">💾 บันทึก</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('edit-trip-modal')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:20px;font-size:18px;">⚙️ ข้อมูลส่วนตัว</h3>
+    <div class="form-group"><label>เลขพร้อมเพย์</label><input type="text" id="prof-pp" placeholder="เลขโทรศัพท์หรือบัตรประชาชน"></div>
+    <div class="form-group"><label>ธนาคาร</label>
+      <select id="prof-bank">
+        <option value="">-- เลือกธนาคาร --</option>
+        <option>กสิกรไทย (KBank)</option><option>ไทยพาณิชย์ (SCB)</option>
+        <option>กรุงไทย (KTB)</option><option>กรุงเทพ (BBL)</option>
+        <option>กรุงศรีอยุธยา (BAY)</option><option>ทหารไทยธนชาต (TTB)</option>
+        <option>ออมสิน (GSB)</option><option>ธ.ก.ส.</option><option>ยูโอบี (UOB)</option>
+      </select>
+    </div>
+    <div class="form-group"><label>เลขบัญชีธนาคาร</label><input type="text" id="prof-acc" placeholder="XXX-X-XXXXX-X"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveProfile()">💾 บันทึก</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('profile-modal')">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="edit-bill-modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:20px;font-size:18px;">✏️ แก้ไขบิล</h3>
+    <input type="hidden" id="edit-bill-id">
+    <input type="hidden" id="edit-bill-old-img">
+    <div class="form-group"><label>รายการ</label><input type="text" id="edit-bill-desc"></div>
+    <div class="form-group"><label>จำนวนเงิน (บาท)</label><input type="number" id="edit-bill-amt" min="0" step="0.01"></div>
+    <div class="form-group"><label>คนจ่าย</label><select id="edit-bill-payer"></select></div>
+    <div class="form-group"><label>คนหาร</label><div class="check-group" id="edit-bill-split"></div></div>
+    <div class="form-group"><label>เปลี่ยนรูปสลิป</label><input type="file" id="edit-bill-slip" accept="image/*" style="width:100%;font-size:13px;"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:16px;cursor:pointer;"><input type="checkbox" id="edit-bill-del-img"> ลบรูปภาพสลิปออก</label>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveEditBill()">💾 อัปเดต</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('edit-bill-modal')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="new-chat-modal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:20px;font-size:18px;">📝 เปิดแชทใหม่</h3>
+    <div class="form-group"><label>ส่งหาเพื่อน</label><select id="new-chat-to"></select></div>
+    <div class="form-group"><label>ข้อความ</label><textarea id="new-chat-msg" rows="4" placeholder="พิมพ์ข้อความที่นี่..."></textarea></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="sendNewChat()">🚀 ส่ง</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('new-chat-modal')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="sync-indicator"><span>🔄 กำลังซิงค์...</span></div>
+
+<script>
+let currentUser=null,currentTripId=null,activeChatPartner=null,allUsers=[],allTrips=[],tripMembers=[],expenses=[],notifications=[],onlineUsers=[],sidebarVisible=!0,pollingInterval=null,lastExpenseCount=0,lastNotificationCount=0,isPolling=!1;const POLL_INTERVAL=5e3,$=e=>document.getElementById(e);let toastT;function toast(e){const t=$("toast");t.textContent=e,t.classList.add("show"),clearTimeout(toastT),toastT=setTimeout(()=>t.classList.remove("show"),2800)}function openModal(e){$(e).classList.add("open")}function closeModal(e){$(e).classList.remove("open")}function fmt(e){return Number(e).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2})}async function api(e,t,a){const s={method:e,headers:{"Content-Type":"application/json"}};return a&&(s.body=JSON.stringify(a)),await(await fetch(t,s)).json()}function toggleSidebar(){const e=document.getElementById("sidebar"),t=document.getElementById("main"),a=document.getElementById("sidebar-toggle"),s=document.getElementById("toggle-icon"),n=document.getElementById("sidebar-overlay");sidebarVisible=!sidebarVisible,window.innerWidth<=768?(e.classList.toggle("visible"),n.classList.toggle("visible"),s.textContent=sidebarVisible?"✕":"☰"):(e.classList.toggle("hidden"),t.classList.toggle("expanded"),a.classList.toggle("shifted"),s.textContent="☰"),localStorage.setItem("sidebarVisible",sidebarVisible)}function closeSidebarMobile(){window.innerWidth<=768&&sidebarVisible&&toggleSidebar()}function restoreSidebarState(){const e=localStorage.getItem("sidebarVisible");null!==e&&(sidebarVisible="true"===e,!sidebarVisible&&window.innerWidth>768&&(document.getElementById("sidebar").classList.add("hidden"),document.getElementById("main").classList.add("expanded"),document.getElementById("sidebar-toggle").classList.remove("shifted")))}function showTab(e){document.querySelectorAll(".tab").forEach((t,a)=>t.classList.toggle("active",["tab-add","tab-history","tab-settle"][a]===e)),document.querySelectorAll(".tab-content").forEach(t=>t.classList.toggle("active",t.id===e)),"tab-history"===e&&renderHistory(),"tab-settle"===e&&renderSettle()}function switchLoginTab(e){$("login-tab").style.display="login"===e?"":"none",$("register-tab").style.display="register"===e?"":"none",$("login-tab-btn").className="login"===e?"btn btn-primary btn-sm":"btn btn-ghost btn-sm",$("register-tab-btn").className="register"===e?"btn btn-primary btn-sm":"btn btn-ghost btn-sm",$("login-error").style.display="none"}async function populateLoginSelect(){allUsers=await api("GET","/api/users");const e=$("login-user-select");e.innerHTML=allUsers.length?allUsers.map(e=>`<option value="${e.name}">${e.name}</option>`).join(""):'<option value="">-- ยังไม่มีผู้ใช้ --</option>'}function doLogin(){const e=$("login-user-select").value;e?(currentUser=e,sessionStorage.setItem("currentUser",e),closeModal("login-modal"),toast(`👋 ยินดีต้อนรับ ${e}!`),loadAll()):showErr("กรุณาเลือกชื่อ")}async function doRegister(){const e=$("reg-name").value.trim();if(!e)return void showErr("กรุณากรอกชื่อ");const t=await api("POST","/api/users",{name:e});if(t.error)return void showErr(t.error);currentUser=e,sessionStorage.setItem("currentUser",e),allUsers=await api("GET","/api/users"),closeModal("login-modal"),toast(`🎉 สร้างโปรไฟล์ ${e} สำเร็จ!`),loadAll()}function showErr(e){const t=$("login-error");t.textContent=e,t.style.display=""}function logout(){stopPolling(),currentUser=null,sessionStorage.removeItem("currentUser"),renderAll(),populateLoginSelect(),openModal("login-modal")}function openProfile(){const e=allUsers.find(e=>e.name===currentUser)||{};$("prof-pp").value=e.promptpay||"",$("prof-bank").value=e.bank_name||"",$("prof-acc").value=e.bank_account||"",openModal("profile-modal")}async function saveProfile(){await api("PUT",`/api/users/${encodeURIComponent(currentUser)}`,{promptpay:$("prof-pp").value.trim(),bank_name:$("prof-bank").value,bank_account:$("prof-acc").value.trim()}),allUsers=await api("GET","/api/users"),closeModal("profile-modal"),toast("💾 บันทึกโปรไฟล์สำเร็จ!")}async function heartbeat(){currentUser&&(await api("POST","/api/heartbeat",{name:currentUser}),onlineUsers=await api("GET","/api/online"),renderOnlineList(),renderMemberList(),currentTripId&&(notifications=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),renderChatPanel()))}async function pollUpdates(){if(!currentUser||!currentTripId||isPolling)return;isPolling=!0;const e=document.getElementById("sync-indicator");e&&e.classList.add("syncing");try{const t=await api("GET","/api/online");JSON.stringify(t)!==JSON.stringify(onlineUsers)&&(onlineUsers=t,renderOnlineList(),renderMemberList());const a=await api("GET",`/api/trips/${currentTripId}/expenses`);if(a.length!==lastExpenseCount){const e=a.length>lastExpenseCount;if(lastExpenseCount=a.length,expenses=a,e&&document.querySelector('.tab[onclick*="tab-history"]')){const e=document.querySelector('.tab[onclick*="tab-history"]');e.classList.contains("active")||(e.innerHTML='📊 ประวัติบิล <span class="badge badge-red">NEW</span>',setTimeout(()=>e.innerHTML="📊 ประวัติบิล",5e3))}const t=document.querySelector(".tab-content.active");t&&"tab-history"===t.id&&renderHistory(),t&&"tab-settle"===t.id&&renderSettle()}const s=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),n=s.filter(e=>e.to_user===currentUser&&!e.is_read).length;if(n!==lastNotificationCount){const e=n>lastNotificationCount;if(lastNotificationCount=n,notifications=s,renderChatPanel(),e){const e=s.filter(e=>e.to_user===currentUser&&!e.is_read)[0];if(e){const t=e.is_auto?"ระบบ":e.from_user;toast(`💬 ข้อความใหม่จาก ${t}`)}}}const i=await api("GET",`/api/trips/${currentTripId}/members`);JSON.stringify(i)!==JSON.stringify(tripMembers)&&(tripMembers=i,renderMemberList(),renderBillForm())}catch(e){console.error("Polling error:",e)}finally{isPolling=!1,setTimeout(()=>{e&&e.classList.remove("syncing")},500)}}function startPolling(){pollingInterval&&clearInterval(pollingInterval),pollingInterval=setInterval(pollUpdates,POLL_INTERVAL),setTimeout(pollUpdates,1e3)}function stopPolling(){pollingInterval&&(clearInterval(pollingInterval),pollingInterval=null)}async function loadAll(){allUsers=await api("GET","/api/users"),allTrips=await api("GET","/api/trips"),onlineUsers=await api("GET","/api/online"),!currentTripId&&allTrips.length&&(currentTripId=allTrips[0].id),currentTripId&&(tripMembers=await api("GET",`/api/trips/${currentTripId}/members`),expenses=await api("GET",`/api/trips/${currentTripId}/expenses`),lastExpenseCount=expenses.length,currentUser&&(notifications=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),lastNotificationCount=notifications.filter(e=>e.to_user===currentUser&&!e.is_read).length)),renderAll(),currentUser&&currentTripId&&startPolling()}async function createTrip(){const e=$("new-trip-name").value.trim(),t=$("new-trip-date").value;if(!e)return void toast("⚠️ กรุณากรอกชื่อ Event");const a=await api("POST","/api/trips",{name:e,trip_date:t});if(a.error)return void toast("❌ "+a.error);$("new-trip-name").value="",toast(`✈️ สร้าง Event '${e}' สำเร็จ!`),currentTripId=a.id,await loadAll()}function selectTrip(e){currentTripId=parseInt(e),activeChatPartner=null,stopPolling(),loadAll()}function openEditTrip(){if(!currentTripId)return;const e=allTrips.find(e=>e.id===currentTripId);e&&($("edit-trip-name").value=e.name,$("edit-trip-date").value=e.trip_date||"",openModal("edit-trip-modal"))}async function saveEditTrip(){const e=$("edit-trip-name").value.trim();e?(await api("PUT",`/api/trips/${currentTripId}`,{name:e,trip_date:$("edit-trip-date").value}),closeModal("edit-trip-modal"),toast("✏️ อัปเดต Event เรียบร้อย!"),await loadAll()):toast("⚠️ กรุณากรอกชื่อ")}async function deleteTrip(){const e=allTrips.find(e=>e.id===currentTripId);e&&confirm(`ลบ Event "${e.name}"?`)&&(await api("DELETE",`/api/trips/${currentTripId}`),currentTripId=null,toast("🗑️ ลบ Event แล้ว"),await loadAll())}async function addMemberToTrip(){const e=$("member-add-select").value;if(!e||"--"===e)return void toast("⚠️ เลือกสมาชิกก่อน");const t=await api("POST",`/api/trips/${currentTripId}/members`,{name:e});if(t.error)return void toast("❌ "+t.error);toast(`➕ ดึง ${e} เข้ากลุ่มสำเร็จ!`),tripMembers=await api("GET",`/api/trips/${currentTripId}/members`),renderMemberList(),renderBillForm()}async function removeMember(e){await api("DELETE",`/api/trips/${currentTripId}/members/${encodeURIComponent(e)}`),toast(`🗑️ ถอด ${e} ออกแล้ว`),tripMembers=await api("GET",`/api/trips/${currentTripId}/members`),renderMemberList(),renderBillForm()}function saveBill(){const e=$("bill-desc").value.trim(),t=parseFloat($("bill-amt").value)||0,a=$("bill-payer").value,s=Array.from(document.querySelectorAll("#bill-split-checkboxes input:checked")).map(e=>e.value);if(!e||t<=0||!s.length)return void toast("⚠️ กรอกข้อมูลให้ครบ");const n=$("bill-slip").files[0];n?(new FileReader).onload=n=>doSaveBill(e,t,a,s,n.target.result):doSaveBill(e,t,a,s,null),n&&new FileReader().readAsDataURL(n)}async function doSaveBill(e,t,a,s,n){await api("POST",`/api/trips/${currentTripId}/expenses`,{description:e,amount:t,payer_name:a,split_members:s,image_blob:n}),$("bill-desc").value="",$("bill-amt").value="",$("bill-slip").value="",toast(`📝 บันทึกบิล '${e}' สำเร็จ!`),expenses=await api("GET",`/api/trips/${currentTripId}/expenses`),lastExpenseCount=expenses.length,notifications=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),renderChatPanel()}function openEditBill(e){const t=expenses.find(t=>t.id===e);if(!t)return;$("edit-bill-id").value=e,$("edit-bill-old-img").value=t.image_blob||"",$("edit-bill-desc").value=t.description,$("edit-bill-amt").value=t.amount;$("edit-bill-payer").innerHTML=tripMembers.map(e=>`<option value="${e}" ${e===t.payer_name?"selected":""}>${e}</option>`).join(""),$("edit-bill-split").innerHTML=tripMembers.map(e=>`<label class="check-item"><input type="checkbox" value="${e}" ${t.split_members.includes(e)?"checked":""}> ${e}</label>`).join(""),$("edit-bill-del-img").checked=!1,$("edit-bill-slip").value="",openModal("edit-bill-modal")}function saveEditBill(){const e=parseInt($("edit-bill-id").value),t=$("edit-bill-desc").value.trim(),a=parseFloat($("edit-bill-amt").value)||0,s=$("edit-bill-payer").value,n=Array.from(document.querySelectorAll("#edit-bill-split input:checked")).map(e=>e.value),i=$("edit-bill-del-img").checked,r=$("edit-bill-old-img").value,l=$("edit-bill-slip").files[0];l?((new FileReader).onload=i=>doUpdateBill(e,t,a,s,n,i.target.result)).readAsDataURL(l):doUpdateBill(e,t,a,s,n,i?null:r)}async function doUpdateBill(e,t,a,s,n,i){await api("PUT",`/api/expenses/${e}`,{description:t,amount:a,payer_name:s,split_members:n,image_blob:i}),closeModal("edit-bill-modal"),toast("🔄 อัปเดตสำเร็จ!"),expenses=await api("GET",`/api/trips/${currentTripId}/expenses`),renderHistory()}async function deleteBill(e){confirm("ลบบิลนี้?")&&(await api("DELETE",`/api/expenses/${e}`),toast("🗑️ ลบบิลแล้ว"),expenses=await api("GET",`/api/trips/${currentTripId}/expenses`),renderHistory())}function getChatGroups(){const e={};return notifications.forEach(t=>{let a=1===t.is_auto||"ระบบสรุปยอด"===t.from_user?"ระบบสรุปยอด":t.from_user===currentUser?t.to_user:t.from_user;e[a]||(e[a]=[]),e[a].push(t)}),e}async function markRead(e){await api("POST","/api/notifications/read",{trip_id:currentTripId,to_user:currentUser,from_user:e}),notifications.filter(t=>t.to_user===currentUser&&("ระบบสรุปยอด"===e?1===t.is_auto:t.from_user===e)).forEach(e=>e.is_read=1)}async function deleteNotif(e){await api("DELETE",`/api/notifications/${e}`),notifications=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),renderChatPanel()}async function sendReply(e,t){if(!t.trim())return void toast("⚠️ กรอกข้อความ");await api("POST","/api/notifications/send",{trip_id:currentTripId,to_user:e,from_user:currentUser,message:t.trim()}),notifications=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),lastNotificationCount=notifications.filter(e=>e.to_user===currentUser&&!e.is_read).length,renderChatPanel(),toast(`🚀 ส่งหา ${e} แล้ว!`)}function openNewChatModal(){const e=tripMembers.filter(e=>e!==currentUser);$("new-chat-to").innerHTML=e.map(e=>`<option>${e}</option>`).join(""),$("new-chat-msg").value="",openModal("new-chat-modal")}async function sendNewChat(){const e=$("new-chat-to").value,t=$("new-chat-msg").value.trim();if(!t)return void toast("⚠️ กรอกข้อความ");await api("POST","/api/notifications/send",{trip_id:currentTripId,to_user:e,from_user:currentUser,message:t}),notifications=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),lastNotificationCount=notifications.filter(e=>e.to_user===currentUser&&!e.is_read).length,closeModal("new-chat-modal"),activeChatPartner=e,renderChatPanel(),toast(`🚀 ส่งหา ${e} แล้ว!`)}async function switchChatPartner(e){activeChatPartner=e,await markRead(e),notifications=await api("GET",`/api/trips/${currentTripId}/notifications/${encodeURIComponent(currentUser)}`),lastNotificationCount=notifications.filter(e=>e.to_user===currentUser&&!e.is_read).length,renderChatPanel()}function calcSettle(){const e=new Set(tripMembers);expenses.forEach(t=>{e.add(t.payer_name),t.split_members.forEach(t=>e.add(t))});const t={};e.forEach(e=>t[e]=0),expenses.forEach(e=>{t[e.payer_name]=(t[e.payer_name]||0)+e.amount;const a=e.amount/e.split_members.length;e.split_members.forEach(e=>{t[e]=(t[e]||0)-a})});const a=Object.entries(t).filter(([,e])=>e<-.01).map(([e,t])=>[e,t]),s=Object.entries(t).filter(([,e])=>e>.01).map(([e,t])=>[e,t]),n=[];for(;a.length&&s.length;){const e=Math.min(Math.abs(a[0][1]),s[0][1]);n.push({debtor:a[0][0],creditor:s[0][0],amount:e}),a[0][1]+=e,s[0][1]-=e,Math.abs(a[0][1])<.01&&a.shift(),Math.abs(s[0][1])<.01&&s.shift()}return{net:t,txs:n}}function shareToLine(){const e=$("line-msg-box").value;window.open(`https://line.me/R/msg/text/?${encodeURIComponent(e)}`,"_blank")}function renderAll(){renderUserSection(),renderOnlineList(),renderTripSelector(),renderMemberList(),renderChatPanel(),renderMainArea()}function renderUserSection(){const e=$("user-section");currentUser?e.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">\n    <span style="font-size:14px;font-weight:600;color:var(--success);display:flex;align-items:center;gap:6px;"><span class="dot-green"></span> ${currentUser}</span>\n    <button class="btn btn-ghost btn-sm" onclick="logout()">ออก</button></div>\n    <button class="btn btn-ghost btn-block btn-sm" onclick="openProfile()">⚙️ แก้ไขข้อมูลส่วนตัว</button>`:e.innerHTML='<div class="alert alert-warning" style="font-size:12px;">⚠️ ยังไม่ได้เข้าสู่ระบบ</div>\n      <button class="btn btn-primary btn-block btn-sm" onclick="openModal(\'login-modal\');populateLoginSelect();">🔐 เข้าสู่ระบบ / สมัคร</button>'}function renderOnlineList(){const e=$("online-list");if(!onlineUsers.length)return void(e.innerHTML='<span style="color:var(--text3);font-size:12px;">ไม่มีผู้ใช้ออนไลน์</span>');e.innerHTML=onlineUsers.map(e=>`<div class="member-row"><span><span class="dot-green" style="margin-right:6px;"></span>${e}${e===currentUser?' <em style="font-size:11px;color:var(--text3);">(คุณ)</em>':""}</span></div>`).join("")}function renderTripSelector(){const e=$("trip-selector");e.innerHTML=allTrips.map(e=>`<option value="${e.id}" ${e.id===currentTripId?"selected":""}>${e.name}${e.trip_date?` (${e.trip_date})`:""}</option>`).join(""),allTrips.length||JSEOF
+cat >> /mnt/user-data/outputs/index.html << 'JSEOF2'
+(e.innerHTML='<option value="">-- ไม่มี Event --</option>')}function renderMemberList(){const e=$("member-list");e.innerHTML=tripMembers.map(e=>{const t=onlineUsers.includes(e),a=e===currentUser,s=currentUser?notifications.filter(t=>t.to_user===e&&!t.is_read).length:0;return`<div class="member-row">\n      <span><span class="${t?"dot-green":"dot-gray"}" style="margin-right:6px;"></span>\n      <span style="font-size:13px;">${e}${a?' <em style="font-size:11px;color:var(--text3);">(คุณ)</em>':""}${s>0?` <span class="tag-unread">${s}</span>`:""}</span></span>\n      <button class="btn btn-ghost btn-sm" onclick="removeMember('${e}')" style="padding:4px 10px;font-size:11px;">ออก</button></div>`}).join('')||'<span style="color:var(--text3);font-size:12px;">ยังไม่มีสมาชิก</span>';const t=$("member-add-select"),a=allUsers.filter(e=>!tripMembers.includes(e.name));t.innerHTML=["-- เลือกเพื่อน --",...a.map(e=>e.name)].map(e=>`<option value="${e}">${e}</option>`).join("")}function renderChatPanel(){const e=$("chat-panel");if(!currentUser||!currentTripId)return void(e.innerHTML='<span style="font-size:12px;color:var(--text3);">เข้าสู่ระบบเพื่อใช้แชท</span>');const t=getChatGroups(),a=notifications.filter(e=>e.to_user===currentUser&&!e.is_read).length;$("chat-section-title").innerHTML=a>0?`🔔 ศูนย์แชทส่วนตัว <span class="tag-unread">${a}</span>`:"🔔 ศูนย์แชทส่วนตัว";const s=Object.keys(t);if(!s.length)return void(e.innerHTML='<span style="font-size:12px;color:var(--text3);">ไม่มีประวัติข้อความ</span>\n      <br><button class="btn btn-ghost btn-sm btn-block" style="margin-top:8px;" onclick="openNewChatModal()">📝 เปิดแชทใหม่</button>');activeChatPartner&&s.includes(activeChatPartner)||(activeChatPartner=s[0]);const n=s.map(e=>{const a=t[e].filter(e=>e.to_user===currentUser&&!e.is_read).length,s="ระบบสรุปยอด"===e?"🤖 ระบบ":`👤 ${e}`;return`<button class="chat-tab-btn${e===activeChatPartner?" active":""}" onclick="switchChatPartner('${e}')">${s}${a>0?` <span class="tag-unread">${a}</span>`:""}</button>`}).join(""),i=(t[activeChatPartner]||[]).map(e=>{const t=e.from_user===currentUser&&0===e.is_auto,a="ระบบสรุปยอด"===e.from_user||1===e.is_auto,s=e.timestamp?e.timestamp.substring(11,16):"",n=e.message.replace(/</g,"&lt;").replace(/\n/g,"<br>"),i=`<button class="btn btn-ghost btn-sm" onclick="deleteNotif(${e.id})" style="font-size:11px;padding:3px 8px;margin-top:3px;">🗑️</button>`;return t?`<div class="chat-msg" style="text-align:right;"><div class="bubble bubble-me">${n}</div><div class="chat-time">${s}</div>${i}</div>`:a?`<div class="chat-msg"><div style="font-size:11px;color:var(--info);margin-bottom:3px;font-weight:600;">🤖 ระบบอัตโนมัติ</div><div class="bubble bubble-sys">${n}</div><div class="chat-time">${s}</div>${i}</div>`:`<div class="chat-msg"><div style="font-size:11px;color:var(--text3);margin-bottom:3px;">👤 ${e.from_user}</div><div class="bubble bubble-them">${n}</div><div class="chat-time">${s}</div>${i}</div>`}).join(""),r="ระบบสรุปยอด"!==activeChatPartner?`\n    <div style="margin-top:12px;border-top:2px solid var(--border);padding-top:10px;">\n      <div style="display:flex;gap:8px;">\n        <input type="text" id="chat-reply-input" placeholder="พิมพ์ตอบกลับ..." style="flex:1;font-size:13px;">\n        <button class="btn btn-primary btn-sm" onclick="sendReply('${activeChatPartner}',$('chat-reply-input').value).then(()=>$('chat-reply-input').value='')">ส่ง</button>\n      </div>\n    </div>`:"";e.innerHTML=`<div class="chat-tabs">${n}</div>\n    <div class="chat-wrap" id="chat-messages">${i||'<span style="font-size:12px;color:var(--text3);">ไม่มีข้อความ</span>'}</div>\n    ${r}\n    <button class="btn btn-ghost btn-sm btn-block" style="margin-top:10px;" onclick="openNewChatModal()">📝 เปิดแชทใหม่</button>`;const l=$("chat-messages");l&&(l.scrollTop=l.scrollHeight)}function renderMainArea(){$("no-login-msg").style.display="none",$("no-trip-msg").style.display="none",$("no-member-msg").style.display="none",$("app-content").style.display="none",$("main-title").textContent="✈️ Trip Expense Splitter Pro",$("main-subtitle").textContent="";if(!currentUser)return void($("no-login-msg").style.display="");if(!allTrips.length)return void($("no-trip-msg").style.display="");currentTripId||(currentTripId=allTrips[0].id);const e=allTrips.find(e=>e.id===currentTripId);if(!e)return void($("no-trip-msg").style.display="");if($("main-title").textContent=`✈️ Event: ${e.name}`,$("main-subtitle").textContent=e.trip_date?`📅 วันที่จัด: ${e.trip_date}`:"",!tripMembers.length)return void($("no-member-msg").style.display="");$("app-content").style.display="",renderBillForm()}function renderBillForm(){$("bill-payer").innerHTML=tripMembers.map(e=>`<option value="${e}" ${e===currentUser?"selected":""}>${e}</option>`).join(""),$("bill-split-checkboxes").innerHTML=tripMembers.map(e=>`<label class="check-item"><input type="checkbox" value="${e}" checked> ${e}</label>`).join("")}function renderHistory(){const e=$("expense-list");if(!expenses.length)return void(e.innerHTML='<div class="alert alert-info">ยังไม่มีรายการบิล</div>');e.innerHTML=expenses.map(e=>`\n    <div class="card">\n      <div class="expense-header" onclick="toggleExp(${e.id})">\n        <div><span style="font-weight:600;font-size:15px;">📌 ${e.description}</span>\n          <div style="font-size:13px;color:var(--text2);margin-top:4px;">💰 ${fmt(e.amount)} บาท • จ่ายโดย ${e.payer_name}</div>\n          <div style="font-size:12px;color:var(--text3);">หาร: ${e.split_members.join(", ")}</div></div>\n        <span style="color:var(--text3);font-size:20px;" id="ea-${e.id}">›</span>\n      </div>\n      <div class="expense-body" id="eb-${e.id}">\n        ${e.image_blob?`<img src="${e.image_blob}" class="slip-img">`:'<p style="font-size:12px;color:var(--text3);">ไม่มีรูปสลิป</p>'}\n        <div style="display:flex;gap:10px;margin-top:12px;">\n          <button class="btn btn-ghost btn-sm" onclick="openEditBill(${e.id})">✏️ แก้ไข</button>\n          <button class="btn btn-danger btn-sm" onclick="deleteBill(${e.id})">🗑️ ลบ</button>\n        </div>\n      </div>\n    </div>`).join("")}function toggleExp(e){const t=$(`eb-${e}`),a=$(`ea-${e}`);t.classList.toggle("open"),a.textContent=t.classList.contains("open")?"˅":"›"}function renderSettle(){const e=$("balance-cards"),t=$("transfer-plan"),a=$("line-msg-box"),s=allTrips.find(e=>e.id===currentTripId);if(!expenses.length)return e.innerHTML='<div class="alert alert-info" style="grid-column:1/-1;">ยังไม่มีรายการบิล</div>',t.innerHTML="",void(a.value="");const{net:n,txs:i}=calcSettle(),r=Object.entries(n).filter(([,e])=>e>.01),l=Object.entries(n).filter(([,e])=>e<-.01);e.innerHTML=`\n    <div><div style="font-weight:600;font-size:13px;color:var(--success);margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span class="dot-green"></span> ได้รับเงินคืน</div>\n    ${r.map(([e,t])=>`<div class="alert alert-success" style="margin-bottom:6px;">${e}: ${fmt(t)} บาท</div>`).join('')||'<div style="font-size:12px;color:var(--text3);">-</div>'}</div>\n    <div><div style="font-weight:600;font-size:13px;color:var(--danger);margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span class="dot-gray"></span> ต้องจ่ายออก</div>\n    ${l.map(([e,t])=>`<div class="alert alert-danger" style="margin-bottom:6px;">${e}: ${fmt(Math.abs(t))} บาท</div>`).join('')||'<div style="font-size:12px;color:var(--text3);">-</div>'}</div>`,t.innerHTML=i.map(e=>{const t=allUsers.find(t=>t.name===e.creditor)||{},a=(t.promptpay||"").trim(),s=(t.bank_name||"").trim(),n=(t.bank_account||"").trim(),i=e.debtor===currentUser;return`<div class="tx-row" ${i?'style="border-color:var(--secondary);background:linear-gradient(135deg,rgba(236,72,153,0.08),rgba(99,102,241,0.08));"':""}>\n      <div style="font-size:14px;font-weight:600;">💳 <strong>${e.debtor}</strong> โอนให้ 👉 <strong>${e.creditor}</strong>\n        <span style="color:var(--primary);"> = ${fmt(e.amount)} บาท</span>\n        ${i?'<span class="badge badge-red" style="margin-left:8px;">⚠️ รายการของคุณ</span>':""}</div>\n      ${a?`<div style="margin-top:8px;"><span style="font-size:12px;color:var(--text2);font-weight:600;">📱 พร้อมเพย์</span><div class="code-box" style="margin-top:4px;">${a}</div></div>`:""}\n      ${n?`<div style="margin-top:8px;"><span style="font-size:12px;color:var(--text2);font-weight:600;">🏦 ${s||"บัญชีธนาคาร"}</span><div class="code-box" style="margin-top:4px;">${n}</div></div>`:""}\n      ${a||n?"":'<div class="alert alert-warning" style="font-size:12px;margin-top:8px;">⚠️ '+e.creditor+" ยังไม่ได้บันทึกข้อมูลบัญชี</div>"}</div>`}).join('')||'<div class="alert alert-success">✅ ไม่มีการโอนเงินที่จำเป็น</div>';let o=`📊 สรุปยอดค่าใช้จ่ายทริป: ${s?s.name:""}\n`;s&&s.trip_date&&(o+=`📅 วันที่: ${s.trip_date}\n`),o+="-------------------------------\n",i.forEach(e=>{o+=`💳 ${e.debtor} โอนให้ 👉 ${e.creditor} = ${fmt(e.amount)} บาท\n`;const t=allUsers.find(t=>t.name===e.creditor)||{};t.promptpay&&(o+=`   (📱 พร้อมเพย์: ${t.promptpay})\n`)}),o+="-------------------------------",a.value=o}document.addEventListener("DOMContentLoaded",async()=>{restoreSidebarState(),$("new-trip-date").value=(new Date).toISOString().split("T")[0];const e=sessionStorage.getItem("currentUser");allUsers=await api("GET","/api/users"),allTrips=await api("GET","/api/trips"),onlineUsers=await api("GET","/api/online"),e&&allUsers.find(t=>t.name===e)?(currentUser=e,allTrips.length&&(currentTripId=allTrips[0].id),await loadAll(),closeModal("login-modal")):(renderAll(),populateLoginSelect(),openModal("login-modal")),setInterval(heartbeat,1e4),heartbeat(),document.addEventListener("visibilitychange",()=>{document.hidden?stopPolling():currentUser&&currentTripId&&(startPolling(),pollUpdates())}),window.addEventListener("resize",()=>{const e=document.getElementById("sidebar"),t=document.getElementById("main"),a=document.getElementById("sidebar-toggle"),s=document.getElementById("sidebar-overlay");window.innerWidth>768?(e.classList.remove("visible"),s.classList.remove("visible"),sidebarVisible?(e.classList.remove("hidden"),t.classList.remove("expanded"),a.classList.add("shifted")):(e.classList.add("hidden"),t.classList.add("expanded"),a.classList.remove("shifted"))):(e.classList.remove("hidden"),t.classList.remove("expanded"),a.classList.remove("shifted"),sidebarVisible||(e.classList.remove("visible"),s.classList.remove("visible")))}),document.addEventListener("keydown",e=>{const t=$("chat-reply-input");"Enter"!==e.key||document.activeElement!==t||!t||sendReply(activeChatPartner,t.value).then(()=>t.value="")})});
+</script>
+</body>
+</html>
+JSEOF2
+echo "Created beautiful UI"
