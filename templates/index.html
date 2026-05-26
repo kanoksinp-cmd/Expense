@@ -417,7 +417,7 @@ function connectWebSocket() {
       indicator.classList.remove("online");
       indicator.innerHTML = "<span>🔴 กำลังต่อใหม่..</span>";
     }
-    setTimeout(connectWebSocket, 3000); // จัดการ Auto Reconnect ภายใน 3 วินาที
+    setTimeout(connectWebSocket, 1000); // แก้ไข: จัดการ Auto Reconnect ภายใน 1 วินาที (จากเดิม 3000ms)
   };
 }
 
@@ -478,7 +478,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
     }
   });
   
-  window.addEventListener("resize",()=>{const e=document.getElementById("sidebar"),t=document.getElementById("main"),a=document.getElementById("sidebar-toggle"),s=document.getElementById("sidebar-overlay");window.innerWidth>768?(e.classList.remove("visible"),s.remove("visible"),sidebarVisible?(e.classList.remove("hidden"),t.classList.remove("expanded"),a.classList.add("shifted")):(e.classList.add("hidden"),t.classList.add("expanded"),a.classList.remove("shifted"))):(e.classList.remove("hidden"),t.classList.remove("expanded"),a.classList.remove("shifted"),sidebarVisible||(e.classList.remove("visible"),s.classList.remove("visible")))});document.addEventListener("keydown",e=>{const t=$("chat-reply-input");"Enter"!==e.key||document.activeElement!==t||!t||sendReply(activeChatPartner,t.value).then(()=>t.value="")})});
+  window.addEventListener("resize",()=>{const e=document.getElementById("sidebar"),t=document.getElementById("main"),a=document.getElementById("sidebar-toggle"),s=document.getElementById("sidebar-overlay");window.innerWidth>768?(e.classList.remove("visible"),s.remove("visible"),sidebarVisible?(e.classList.remove("hidden"),t.classList.remove("expanded"),a.add("shifted")):(e.classList.add("hidden"),t.classList.add("expanded"),a.remove("shifted"))):(e.classList.remove("hidden"),t.classList.remove("expanded"),a.remove("shifted"),sidebarVisible||(e.classList.remove("visible"),s.classList.remove("visible")))});document.addEventListener("keydown",e=>{const t=$("chat-reply-input");"Enter"!==e.key||document.activeElement!==t||!t||sendReply(activeChatPartner,t.value).then(()=>t.value="")})});
 </script>
 </body>
 </html>
